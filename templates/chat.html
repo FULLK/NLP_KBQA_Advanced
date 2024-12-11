@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电影KBQA问答系统</title>
+    <link rel="icon" type="image/x-icon" href="../static/ico/image.ico">
+    <link rel="stylesheet" href="../static/css/chat.css">
+    <script src="/static/jquery/jquery.min.js"></script>
+
+</head>
+<body>
+<!-- Header Section -->
+<div id="tsparticles"></div>
+
+<script src="tsparticles.engine.min.js"></script>
+<header>
+    <div>电  影  K  B  Q  A  问  答  系  统</div>
+</header>
+<div id="sidebar">
+    <ul>
+        <li><a href="#" id="homeLink" style="color: white;">回到首页界面</a></li>
+        <li><a href="http://127.0.0.1:5000/graph/query_command" style="color: white;">命令知识图谱</a></li>
+        <li><a href="http://127.0.0.1:5000/graph/query_Language" style="color: white;">问答知识图谱</a></li>
+    </ul>
+</div>
+<!-- Chat Container -->
+<div id="chat-container">
+    <img class="img1" src="/static/images/123.png" alt="Image">
+
+    <div id="chat-messages">
+        <div class="message system-message">欢迎来到电影KBQA问答！请输入您的问题。</div>
+    </div>
+    <input type="text" id="question-input" placeholder="请输入问题...">
+    <button id="send-button">发送</button>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#send-button').click(sendMessage);
+        $('#question-input').keypress(function(e) {
+            if (e.which == 13) {
+                sendMessage();
+                return false;
+            }
+        });
+
+        function sendMessage() {
+            const question = $('#question-input').val().trim();
+            if (question === '') return;
+
+            $('#chat-messages').append($('<div class="message user-message"></div>').text(question));
+            $('#question-input').val('');
+
+            $.ajax({
+                type: 'POST',
+                url: '/chat_main',
+                data: {question: question},
+                success: function(response) {
+                    let answer = response.answer;
+                    if (answer) {
+                        answer = answer.replace(/^小冰：/, '');
+                        $('#chat-messages').append($('<div class="message system-message"></div>').text(answer));
+                    } else {
+                        $('#chat-messages').append($('<div class="message system-message">无法获取答案，请稍后再试。</div>'));
+                    }
+                    scrollToBottom();
+                },
+                error: function() {
+                    $('#chat-messages').append($('<div class="message system-message">请检查网络连接以及Key是否有效qwq</div>'));
+                    scrollToBottom();
+                }
+            });
+        }
+
+        function scrollToBottom() {
+            var chatMessages = $('#chat-messages');
+            chatMessages.scrollTop(chatMessages[0].scrollHeight);
+        }
+    });
+
+    var homeLink = document.getElementById('homeLink');
+
+homeLink.addEventListener('click', function(e) {
+    e.preventDefault();
+    history.pushState({path: '/'}, '', '/');
+    window.location.href = '/';
+});
+</script>
+</body>
+</html>

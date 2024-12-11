@@ -1,0 +1,14 @@
+body{
+    background-color: #fdede7;
+    background-image: url('/static/images/background.jpg');
+            background-size: cover; /* 覆盖整个页面 */
+            background-position: center center; /* 居中显示 */
+            background-attachment: fixed; /* 固定背景，不随页面滚动 */
+}
+a:hover, button:hover {
+        transition: all 0.3s ease;
+        transform: scale(1.05); /* 鼠标悬停时放大 */
+    }
+/*.container{*/
+/*    background-color: #693103;;*/
+/*}*/

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Neo4j Query Visualization</title>
+    <!-- 引入D3.js或其他可视化库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.21.0/cytoscape.min.js"></script>
+
+    <style>
+   body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    width: 90%;
+    max-width: 1200px;
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.input-group {
+    display: flex;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+#cypherQuery {
+    flex-grow: 1;
+    padding: 12px 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 25px 0 0 25px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+#cypherQuery:focus {
+    outline: none;
+    border-color: #4a90e2;
+    box-shadow: 0 0 10px rgba(74, 144, 226, 0.2);
+}
+
+button {
+    padding: 12px 25px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 0 25px 25px 0;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background-color: #357abd;
+}
+
+#cy {
+    width: 100%;
+    height: 600px;
+    border: 3px solid #e0e0e0;
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+#cy:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+#visualization {
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    font-family: 'Courier New', monospace;
+}
+
+        .section-title {
+            width: 100%;
+            text-align: left;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4a90e2;
+            color: #333;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .query-description {
+            width: 100%;
+            background-color: #f0f4f8;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+        }
+</style>
+</head>
+<body>
+   <div class="container">
+        <h1 class="section-title">🔍 Neo4j Graph Query Visualization</h1>
+
+        <div class="query-description">
+            在此输入Cypher查询语句，探索图数据库中的关系和节点。注意不要返回整个搜索结果。不然数据量太大。例如：
+            <ul>
+                <li>MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 25</li>
+                <li>MATCH (p:Person)-[r1:饰演]->(m:Movie) RETURN p,r1,m limit 30</li>
+            </ul>
+        </div>
+
+        <div class="section-title">命令查询输入</div>
+        <div class="input-group">
+            <input
+                type="text"
+                id="cypherQuery"
+                placeholder="输入Cypher查询语句，如：MATCH (n) RETURN n LIMIT 10"
+            >
+            <button onclick="executeQuery()">执行查询</button>
+        </div>
+
+
+        <div class="section-title">查询原始数据</div>
+        <div id="visualization"></div>
+
+        <div class="section-title">图形可视化</div>
+        <div id="cy"></div>
+    </div>
+    <script>
+        function executeQuery() {
+            const query = document.getElementById('cypherQuery').value;
+            fetch('/graph/query_command_main', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ cypher_query: query })
+            })
+            .then(response => response.json())
+            .then(data => visualizeData(data))
+            .catch(error => console.error('Error:', error));
+        }
+
+
+        function visualizeData(data) {
+                 console.log('Received data:', data); // 调试信息
+                 document.getElementById('visualization').innerText = JSON.stringify(data, null, 2);
+                // 将Neo4j查询结果解析为Cytoscape.js可识别的格式
+                const elements = [];
+                const nodeIds = new Set(); // 用于跟踪已添加的节点ID，防止重复添加
+
+                // 添加节点
+                data.nodes.forEach(node => {
+                      const displayProperty = getnodePropertyToDisplay(node.label, node.properties);
+                    if (!nodeIds.has(node.id)) {
+                        elements.push({
+                            group: 'nodes',
+                            data: {
+                                id: node.id,
+                                label: node.label,
+                                property:node.properties,
+                                content:displayProperty
+                            }
+                        });
+                        nodeIds.add(node.id);
+                    }
+                });
+
+                // 添加边，并确保涉及的节点已经存在
+                data.edges.forEach(edge => {
+                    const sourceId = edge.from;
+                    const targetId = edge.to;
+
+                    // 确保源和目标节点都已经被添加
+                    if (!nodeIds.has(sourceId)) {
+                        console.warn(`Source node ${sourceId} not found, skipping edge.`);
+                        return;
+                    }
+                    if (!nodeIds.has(targetId)) {
+                        console.warn(`Target node ${targetId} not found, skipping edge.`);
+                        return;
+                    }
+
+                    elements.push({
+                        group: 'edges',
+                        data: {
+                            id: `${sourceId}-${targetId}-${edge.label}`, // 创建唯一的边ID
+                            source: sourceId,
+                            target: targetId,
+                            label: edge.label,
+
+                        }
+                    });
+                });
+
+                // 初始化Cytoscape实例
+                const cy = cytoscape({
+                    container: document.getElementById('cy'),
+                    elements: elements,
+                      layout: {
+                                name: 'cose',
+                                // 优化布局参数
+                                idealEdgeLength: 200,       // 增加理想边长
+                                nodeOverlap: 20,
+                                refresh: 20,
+                                fit: true,
+                                padding: 30,
+                                randomize: false,
+                                componentSpacing: 100,
+                                nodeRepulsion: 400000,
+                                edgeElasticity: 100,
+                                nestingFactor: 5,
+                                gravity: 80,
+                                numIter: 1000,
+                                initialTemp: 200,
+                                coolingFactor: 0.95,
+                                minTemp: 1.0
+                            },
+                    style: [
+                        {
+                            selector: 'node[label="Genre"]',
+                            style: {
+                                'background-color':  '#4169E1',
+                                'label': 'data(content)', // 假设所有节点都有name属性
+                                'text-wrap': 'wrap'
+                            }
+                        },
+                         {
+                            selector: 'node[label="Person"]',
+                            style: {
+                                'background-color': '#7FFFD4',
+                                'label': 'data(content)',
+                                 'text-wrap': 'wrap'// 假设所有节点都有name属性
+                            }
+                        },
+
+                         {
+                            selector: 'node[label="Movie"]',
+                            style: {
+                                'background-color': '#8B4513',
+                                'label': 'data(content)',
+                                 'text-wrap': 'wrap'// 假设所有节点都有name属性
+                            }
+                        },
+                         {
+                                    selector: 'edge',
+                                    style: {
+                                        'curve-style': 'bezier',
+                                        'font-size': '10px',
+                                        'text-rotation': 'autorotate',
+                                        'target-arrow-shape': 'vee',
+                                        'arrow-scale': 1.5,
+                                        'line-height': 1.2,
+                                        'text-margin-y': -10,
+                                        'width': 2,
+                                        'edge-distances': 'node-position'
+                                    }
+                         },
+
+                        {
+                            selector: 'edge[label="是"]',
+                            style: {
+                                'width': 3,
+                                'line-color': '#CD5555',
+                                'target-arrow-color': '#CDAD00',
+                                'target-arrow-shape': 'triangle',
+                                'arrow-scale': 1, // 可选：调整箭头大小
+                                'label': 'data(label)' // 显示边的标签
+                            }
+                        },
+                         {
+                            selector: 'edge[label="饰演"]',
+                            style: {
+                                'width': 3,
+                                'line-color': '#FF34B3',
+                                'target-arrow-color': '#8B8970',
+                                'target-arrow-shape': 'triangle',
+                                'arrow-scale': 1, // 可选：调整箭头大小
+                                'label': 'data(label)' // 显示边的标签
+                            }
+                        },
+
+                    ]
+                });
+                cy.ready(function() {
+                    cy.fit(); // 自动调整视图以适应所有元素
+                });
+        }
+
+        function getnodePropertyToDisplay(label, properties) {
+                switch (label) {
+                    case 'Genre':
+                        return properties.name || 'Unknown Person'; // 如果有name属性则使用它，否则用默认文本
+                    case 'Person':
+                        return properties.name || 'Unknown Company';
+                    case 'Movie':
+                        return properties.title || 'Untitled Project';
+                    default:
+                        return JSON.stringify(properties); // 默认情况下，可以将整个properties对象转换为字符串
+                }
+        }
+        //MATCH (n)-[r]->(m) RETURN n,r,m LIMIT 25
+    </script>
+</body>
+</html>
