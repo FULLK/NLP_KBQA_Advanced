@@ -29,7 +29,7 @@ flask-sqlalchemy通过命令行初始化生成mysql数据库
 
 # 演示
 
-[video(video-BWGhm7aC-1734320640826)(type-csdn)(url-https://live.csdn.net/v/embed/439037)(image-https://i-blog.csdnimg.cn/img_convert/e997847ec3415f3cad0c6b611ef2c424.jpeg)(title-演示视频)]
-
+[[video(video-BWGhm7aC-1734320640826)(type-csdn)(url-https://live.csdn.net/v/embed/439037)(image-https://i-blog.csdnimg.cn/img_convert/e997847ec3415f3cad0c6b611ef2c424.jpeg)(title-演示视频)]
+](https://live.csdn.net/v/439037)
 
 
