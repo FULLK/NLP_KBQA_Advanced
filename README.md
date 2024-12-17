@@ -51,6 +51,7 @@
 NLP_KBQA_Advanced
 ├─ answer_search.py              # 包含搜索答案的函数和类
 ├─ config.py                     # 数据库配置；邮箱配置
+├─ exts.py                       # 解决循环引用
 ├─ decorators.py                 # 装饰器，处理未登录
 ├─ models.py                     # orm数据库对应映射
 ├─ app.py                        # 应用程序入口点，启动服务或运行程序的主要文件
